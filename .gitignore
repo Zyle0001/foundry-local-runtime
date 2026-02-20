@@ -9,6 +9,8 @@ Thumbs.db
 *.user
 *.userosscache
 *.sln.docstates
+*.slnx
+*.pyproj
 
 # -------------------------
 # Python
