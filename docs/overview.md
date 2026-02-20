@@ -139,3 +139,7 @@ When adding new features, prefer to:
 - Error feedback is minimal by design; use logs/HTTP responses for details.
 - VRAM status currently reports the first DXGI adapter.
 - TTS models load on CPU by default (DML provider limitations).
+
+## Audio Path (Planned Optional Module)
+
+For planned audio routing/control work (device selection, route graph, and stream transport controls around ASR/TTS), see `docs/audio-path-module-plan.md`.
