@@ -196,6 +196,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 - Model binaries and common local artifacts are intentionally git-ignored.
 - Backend dependencies are in `requirements.txt`.
 - Frontend scripts live in `runtime-ui/package.json`.
+- A Visual Studio solution file is not required for normal backend/UI development.
 
 ---
 
