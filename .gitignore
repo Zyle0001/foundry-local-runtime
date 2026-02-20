@@ -1,0 +1,59 @@
+# -------------------------
+# OS / editor / IDE
+# -------------------------
+.DS_Store
+Thumbs.db
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc.*
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+
+# Virtual environments
+.venv/
+venv/
+env/
+ONNX host service/env/
+
+# -------------------------
+# Node / Svelte / Vite
+# -------------------------
+node_modules/
+runtime-ui/node_modules/
+runtime-ui/.svelte-kit/
+runtime-ui/.output/
+runtime-ui/build/
+runtime-ui/.vercel/
+runtime-ui/.netlify/
+runtime-ui/.wrangler/
+
+# -------------------------
+# Logs / temp
+# -------------------------
+*.log
+*.tmp
+*.temp
+
+# -------------------------
+# Local model artifacts
+# Keep only placeholder docs in GitHub.
+# -------------------------
+ONNX host service/models/**
+!ONNX host service/models/.gitkeep
+!ONNX host service/models/README.md
+

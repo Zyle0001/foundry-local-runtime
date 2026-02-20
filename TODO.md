@@ -1,0 +1,2 @@
+- [ ] Add periodic VRAM auto-refresh on models page (e.g., every 2–5 seconds).
+- [ ] Add multi-GPU support for DXGI status (adapter selection).
