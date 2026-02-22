@@ -13,6 +13,7 @@
 		id: string;
 		root?: string;
 		path?: string | null;
+		loaded?: boolean;
 		missing?: boolean;
 		variants?: ModelVariant[];
 	};

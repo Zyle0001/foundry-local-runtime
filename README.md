@@ -165,6 +165,29 @@ That endpoint tells you the expected ONNX input names and shapes.
 
 For detailed request/response examples, see `docs/overview.md`.
 
+### Optional audio module (Phase 2 in progress)
+
+Enable audio control-plane endpoints by setting:
+
+```powershell
+$env:ENABLE_AUDIO_MODULE = "true"
+uvicorn onnx_host.main:app --reload
+```
+
+Endpoints:
+
+- `GET /audio/devices` - List capture/playback devices (best effort)
+- `POST /audio/defaults` - Set default input/output device ids
+- `GET /audio/routes` - List route graph state
+- `POST /audio/routes` - Create/update route graph nodes
+- `POST /audio/policy` - Set duplex policy mode
+- `DELETE /audio/routes/{route_id}` - Remove route
+- `POST /audio/streams/{stream_id}/start` - Start stream runtime
+- `POST /audio/streams/{stream_id}/stop` - Stop stream runtime
+- `POST /audio/streams/{stream_id}/pause` - Pause stream runtime
+- `POST /audio/controls` - Update gain/mute/push-to-talk state
+- `GET /audio/meters` - Read per-stream live level snapshots
+
 ---
 
 ## Troubleshooting

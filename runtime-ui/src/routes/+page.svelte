@@ -20,6 +20,9 @@
 		vram_total_mb?: number;
 		vram_free_mb?: number;
 		error?: string;
+		features?: {
+			audio_module_enabled?: boolean;
+		};
 	};
 
 	let loading = true;
@@ -27,9 +30,11 @@
 	let modelStats = { total: 0, loaded: 0, missing: 0 };
 	let deviceStatus: StatusResponse | null = null;
 	let recentErrorCount: number | null = null;
+	let audioEnabled = false;
 	let lastModelActivityAt: Date | null = null;
 	let previousLoadedSignature: string | null = null;
 	let refreshTimer: ReturnType<typeof setInterval> | null = null;
+	let audioFeatureListener: ((event: Event) => void) | null = null;
 
 	function isNumber(value: unknown): value is number {
 		return typeof value === 'number' && Number.isFinite(value);
@@ -79,6 +84,7 @@
 				missing: models.filter((m) => m.missing).length
 			};
 			deviceStatus = statusData;
+			audioEnabled = Boolean(statusData.features?.audio_module_enabled);
 
 			try {
 				const logsRes = await fetch(`${API_BASE}/logs?limit=250&level=ERROR`);
@@ -103,10 +109,18 @@
 	onMount(() => {
 		fetchSnapshot();
 		refreshTimer = setInterval(fetchSnapshot, REFRESH_MS);
+		audioFeatureListener = (event: Event) => {
+			const custom = event as CustomEvent<{ enabled?: boolean }>;
+			audioEnabled = Boolean(custom.detail?.enabled);
+		};
+		window.addEventListener('audio-feature-changed', audioFeatureListener as EventListener);
 	});
 
 	onDestroy(() => {
 		if (refreshTimer) clearInterval(refreshTimer);
+		if (audioFeatureListener) {
+			window.removeEventListener('audio-feature-changed', audioFeatureListener as EventListener);
+		}
 	});
 
 	$: hasVram =
@@ -136,6 +150,9 @@
 		<a href="/models" class="btn btn-primary">Manage models</a>
 		<a href="/devices" class="btn btn-ghost">Check devices</a>
 		<a href="/logs" class="btn btn-ghost">Open logs</a>
+		{#if audioEnabled}
+			<a href="/audio" class="btn btn-ghost">Audio dashboard</a>
+		{/if}
 	</div>
 
 	{#if error}
@@ -238,6 +255,20 @@
 				<span aria-hidden="true">-></span>
 			</a>
 		</section>
+
+		{#if audioEnabled}
+			<section class="home-card">
+				<header class="home-card-header">
+					<h2>Audio</h2>
+					<span class="badge">Routing &amp; streams</span>
+				</header>
+				<p>Configure device defaults, route graphs, duplex policy, and stream transport controls.</p>
+				<a href="/audio" class="home-card-link">
+					<span>Open audio</span>
+					<span aria-hidden="true">-></span>
+				</a>
+			</section>
+		{/if}
 	</div>
 </section>
 
@@ -345,7 +376,7 @@
 
 	.home-hero-grid {
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 		gap: var(--space-4);
 	}
 

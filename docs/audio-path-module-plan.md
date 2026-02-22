@@ -6,6 +6,45 @@ Add a separate **optional audio-path module** that sits between ASR/TTS models a
 
 This module is about transport/control of audio streams. ASR and TTS remain model concerns.
 
+## Current status (as of 2026-02-21)
+
+### Completed so far
+
+- Added `onnx_host/audio/` scaffolding:
+  - `devices.py` (best-effort device enumeration)
+  - `graph.py` (route validation + route materialization)
+  - `engine.py` (minimal Phase 2 runtime scaffolding)
+  - `state.py` (audio module state store separate from model state)
+  - `schemas.py` (audio request/response and node/route models)
+- Added `onnx_host/api/audio.py` and mounted it behind `ENABLE_AUDIO_MODULE`.
+- Added `ENABLE_AUDIO_MODULE` config switch (default `false`).
+- Implemented Phase 1 control-plane endpoints:
+  - `GET /audio/devices`
+  - `POST /audio/defaults`
+  - `GET /audio/routes`
+  - `POST /audio/routes`
+  - `POST /audio/policy`
+  - `DELETE /audio/routes/{route_id}`
+- Started Phase 2 stream-plane API surface:
+  - `POST /audio/streams/{stream_id}/start`
+  - `POST /audio/streams/{stream_id}/stop`
+  - `POST /audio/streams/{stream_id}/pause`
+  - `POST /audio/controls`
+  - `GET /audio/meters`
+- Added initial in-memory duplex gating enforcement on stream start:
+  - `allow_overlap`
+  - `capture_gated_by_playback`
+  - `playback_gated_by_capture`
+  - `barge_in_enabled` (capture can pause active playback streams)
+- Added ASR boundary conversion utility scaffold (to 16 kHz mono at ingress boundary).
+- Preserved fault isolation: when disabled, existing model endpoints run unchanged.
+
+### Still left
+
+- Model-specific ASR/TTS adapters are still lightweight/generic (shape-driven ONNX fallback behavior).
+- Route/default persistence file (`audio_defaults.json`) and template management.
+- Device hot-swap handling, advanced telemetry/diagnostics, and ops hardening.
+
 ## Confirmed decisions
 
 The following decisions are locked for implementation:
@@ -115,23 +154,34 @@ Recommended implementation order:
 
 - `GET /audio/devices`
   - Returns available capture/playback devices + defaults.
+  - Status: implemented.
 - `POST /audio/defaults`
   - Set default input/output device IDs.
+  - Status: implemented.
 - `GET /audio/routes`
   - List active route graph.
+  - Status: implemented.
 - `POST /audio/routes`
   - Create/update a route.
+  - Status: implemented.
 - `POST /audio/policy`
   - Set duplex gating policy for a route/session.
+  - Status: implemented.
 - `DELETE /audio/routes/{route_id}`
   - Remove route.
+  - Status: implemented.
 - `POST /audio/streams/{stream_id}/start`
+  - Status: implemented (state-plane only).
 - `POST /audio/streams/{stream_id}/stop`
+  - Status: implemented (state-plane only).
 - `POST /audio/streams/{stream_id}/pause`
+  - Status: implemented (state-plane only).
 - `POST /audio/controls`
   - Per-stream gain/mute + push-to-talk configuration.
+  - Status: implemented (state-plane only).
 - `GET /audio/meters`
   - Lightweight real-time level snapshots.
+  - Status: implemented (state snapshots; live metering pending).
 
 ## UI additions (optional page)
 
@@ -174,20 +224,36 @@ Persist optional `audio_defaults.json` (device preferences + route templates), b
 
 ### Phase 1: Control plane only
 
-- Device enumeration endpoint.
-- Route CRUD with validation.
-- No live streaming yet (dry-run graph state).
+- Status: complete.
+- Done:
+  - Device enumeration endpoint.
+  - Route CRUD with validation.
+  - Optional module mount behind `ENABLE_AUDIO_MODULE=false` default.
+  - Duplex policy endpoint and validation (`POST /audio/policy`).
+  - No live streaming yet (dry-run graph state).
+- Remaining in Phase 1:
+  - Confirm/lock decision on best-effort device enumeration fallback vs fixed backend dependency.
 
 ### Phase 2: Basic stream plane
 
-- Mic capture -> ASR ingress.
-- TTS egress -> output device and file output.
-- Start/stop/pause controls and minimal meters.
-- Force 16 kHz mono conversion at ASR ingress boundary.
-- Implement initial duplex gating policies.
+- Status: started.
+- Done so far:
+  - Stream lifecycle endpoints for start/stop/pause with in-memory state transitions.
+  - Controls endpoint for gain/mute and push-to-talk state.
+  - Meter endpoint with per-stream snapshots.
+  - Initial duplex policy enforcement at stream start.
+  - Initial ASR ingress conversion utility for 16 kHz mono boundary normalization.
+  - Real runtime lifecycle wiring for stream start/pause/stop.
+  - Live stream runtime for capture/playback workers and callbacks.
+  - Live meter updates from runtime audio frames.
+  - Basic ASR adapter ingestion from runtime ASR ingress buffers.
+  - Basic TTS adapter waveform synthesis for `source.kind=tts` with tone fallback.
+- Remaining:
+- Harden model-specific ASR/TTS bindings per concrete model contracts.
 
 ### Phase 3: Operations hardening
 
+- Status: not started.
 - Device hot-swap handling.
 - Better telemetry and diagnostics.
 - Route templates/import-export.

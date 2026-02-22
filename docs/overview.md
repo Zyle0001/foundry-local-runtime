@@ -143,3 +143,19 @@ When adding new features, prefer to:
 ## Audio Path (Planned Optional Module)
 
 For planned audio routing/control work (device selection, route graph, and stream transport controls around ASR/TTS), see `docs/audio-path-module-plan.md`.
+
+Current implementation status:
+- Phase 1 control plane is available behind `ENABLE_AUDIO_MODULE=true`.
+- Phase 1 is complete and Phase 2 is started (state-plane).
+- Implemented endpoints:
+  - `GET /audio/devices`
+  - `POST /audio/defaults`
+  - `GET /audio/routes`
+  - `POST /audio/routes`
+  - `POST /audio/policy`
+  - `DELETE /audio/routes/{route_id}`
+  - `POST /audio/streams/{stream_id}/start`
+  - `POST /audio/streams/{stream_id}/stop`
+  - `POST /audio/streams/{stream_id}/pause`
+  - `POST /audio/controls`
+  - `GET /audio/meters`

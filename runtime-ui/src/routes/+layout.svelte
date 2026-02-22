@@ -1,12 +1,78 @@
 <script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/stores';
 
-	const navLinks = [
+	const API_BASE = 'http://127.0.0.1:8000';
+
+	type StatusResponse = {
+		features?: {
+			audio_module_enabled?: boolean;
+		};
+	};
+
+	const baseNavLinks = [
 		{ href: '/', label: 'Home' },
 		{ href: '/models', label: 'Models' },
 		{ href: '/devices', label: 'Devices' },
 		{ href: '/logs', label: 'Logs' }
 	];
+
+	let audioEnabled = false;
+	let enablingAudio = false;
+	let audioToggleError: string | null = null;
+	let audioFeatureListener: ((event: Event) => void) | null = null;
+
+	async function fetchFeatureStatus(): Promise<void> {
+		try {
+			const res = await fetch(`${API_BASE}/status`);
+			if (!res.ok) return;
+			const data: StatusResponse = await res.json();
+			audioEnabled = Boolean(data.features?.audio_module_enabled);
+		} catch {
+			audioEnabled = false;
+		}
+	}
+
+	async function enableAudioModule(): Promise<void> {
+		enablingAudio = true;
+		audioToggleError = null;
+		try {
+			const res = await fetch(`${API_BASE}/audio/module`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ enabled: true })
+			});
+			if (!res.ok) {
+				const detail = await res.text();
+				throw new Error(detail || `HTTP ${res.status}`);
+			}
+			audioEnabled = true;
+			window.dispatchEvent(new CustomEvent('audio-feature-changed', { detail: { enabled: true } }));
+		} catch (e) {
+			audioToggleError = e instanceof Error ? e.message : 'Failed to enable audio module';
+		} finally {
+			enablingAudio = false;
+		}
+	}
+
+	onMount(async () => {
+		await fetchFeatureStatus();
+		audioFeatureListener = (event: Event) => {
+			const custom = event as CustomEvent<{ enabled?: boolean }>;
+			audioEnabled = Boolean(custom.detail?.enabled);
+		};
+		window.addEventListener('audio-feature-changed', audioFeatureListener as EventListener);
+	});
+
+	onDestroy(() => {
+		if (audioFeatureListener) {
+			window.removeEventListener('audio-feature-changed', audioFeatureListener as EventListener);
+		}
+	});
+
+	$: navLinks = audioEnabled
+		? [...baseNavLinks, { href: '/audio', label: 'Audio' }]
+		: baseNavLinks;
 </script>
 
 <style>
@@ -154,6 +220,34 @@
 		flex-direction: column;
 		gap: 0.15rem;
 		margin-top: var(--space-2);
+	}
+
+	.app-nav-feature {
+		margin-top: auto;
+		padding: 0.55rem;
+		border: 1px solid rgba(148, 163, 184, 0.28);
+		border-radius: 0.5rem;
+		background: rgba(2, 6, 23, 0.45);
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	.app-nav-feature-title {
+		font-size: 0.74rem;
+		color: var(--text-muted);
+	}
+
+	.app-nav-feature-btn {
+		justify-content: flex-start;
+		padding: 0.3rem 0.55rem;
+		font-size: 0.8rem;
+	}
+
+	.app-nav-feature-error {
+		font-size: 0.72rem;
+		color: var(--danger);
+		word-break: break-word;
 	}
 
 	.app-nav-links a {
@@ -406,6 +500,18 @@
 				</a>
 			{/each}
 		</nav>
+
+		{#if !audioEnabled}
+			<div class="app-nav-feature">
+				<div class="app-nav-feature-title">Audio module is off</div>
+				<button class="btn btn-ghost app-nav-feature-btn" on:click={enableAudioModule} disabled={enablingAudio}>
+					{enablingAudio ? 'Enabling...' : 'Enable audio'}
+				</button>
+				{#if audioToggleError}
+					<div class="app-nav-feature-error">{audioToggleError}</div>
+				{/if}
+			</div>
+		{/if}
 	</aside>
 
 	<main class="app-main">
