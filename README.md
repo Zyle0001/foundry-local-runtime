@@ -163,6 +163,34 @@ That endpoint tells you the expected ONNX input names and shapes.
 - `POST /predict/{model_name}` - Run inference
 - `GET /status` - VRAM and GPU adapter details
 
+
+### OpenAI-compatible API for Odysseus and other clients
+
+This runtime also exposes a small OpenAI-compatible surface under `/v1`, so tools that let you configure a custom OpenAI base URL can discover and call loaded local models:
+
+- `GET /v1/models` - List discovered local models in an OpenAI-style response
+- `GET /v1/models/{id}` - Inspect one model
+- `POST /v1/chat/completions` - OpenAI-style chat completion envelope
+- `POST /v1/completions` - OpenAI-style text completion envelope
+
+For Odysseus, use:
+
+```text
+Base URL: http://127.0.0.1:8000/v1
+API key: local-anything
+Model ID: the same id shown by GET /models or GET /v1/models
+```
+
+Important: ONNX files do not include a universal tokenizer/decoder contract. Until a model-specific text-generation adapter is added, chat/completion requests must include an `input_data` object containing the raw ONNX input tensors for the loaded model. Without `input_data`, the endpoint returns a clear `501` explaining that text generation needs an adapter.
+
+Example raw-tensor chat request:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/v1/chat/completions `
+  -ContentType "application/json" `
+  -Body '{"model":"your-model-id","messages":[{"role":"user","content":"hello"}],"input_data":{"input_ids":[[1]],"attention_mask":[[1]]}}'
+```
+
 For detailed request/response examples, see `docs/overview.md`.
 
 ### Optional audio module (Phase 2 in progress)
