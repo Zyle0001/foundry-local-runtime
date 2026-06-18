@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import audio_router, engine_router, logs_router, models_router, status_router
+from .api import audio_router, engine_router, logs_router, models_router, openai_router, status_router
 from .logs import setup_runtime_logging
 
 
@@ -22,5 +22,6 @@ app.add_middleware(
 app.include_router(engine_router)
 app.include_router(logs_router)
 app.include_router(models_router)
+app.include_router(openai_router)
 app.include_router(status_router)
 app.include_router(audio_router)

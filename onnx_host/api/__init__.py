@@ -2,6 +2,7 @@ from .audio import router as audio_router
 from .engine import router as engine_router
 from .logs import router as logs_router
 from .models import router as models_router
+from .openai import router as openai_router
 from .status import router as status_router
 
 __all__ = [
@@ -9,5 +10,6 @@ __all__ = [
     "engine_router",
     "logs_router",
     "models_router",
+    "openai_router",
     "status_router",
 ]
