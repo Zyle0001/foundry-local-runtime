@@ -7,7 +7,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from ..embeddings import EmbeddingAdapterError, create_embeddings
 from ..registry import scan_models_registry
+from ..sequence_classification import SequenceAdapterError, classify, nli, rerank
 from ..state import hot_models, loaded_models
 
 
@@ -43,6 +45,35 @@ class CompletionRequest(BaseModel):
     stream: bool = False
     stop: str | list[str] | None = None
     input_data: dict[str, Any] | None = None
+
+
+class EmbeddingRequest(BaseModel):
+    model: str
+    input: str | list[str]
+    encoding_format: str = "float"
+    dimensions: int | None = None
+
+
+class RerankRequest(BaseModel):
+    model: str
+    query: str
+    documents: list[str]
+
+
+class NliPair(BaseModel):
+    premise: str
+    hypothesis: str
+
+
+class NliRequest(BaseModel):
+    model: str
+    pairs: list[NliPair]
+
+
+class ClassificationRequest(BaseModel):
+    model: str
+    input: str | list[str]
+    labels: list[str]
 
 
 class ModelPermission(BaseModel):
@@ -182,3 +213,81 @@ def create_completion(request: CompletionRequest):
         ],
         "usage": _usage(),
     }
+
+
+@router.post("/embeddings")
+def create_embedding(request: EmbeddingRequest):
+    session = _loaded_model_or_404(request.model)
+    if request.encoding_format != "float":
+        raise HTTPException(status_code=400, detail="Only encoding_format='float' is supported")
+
+    texts = [request.input] if isinstance(request.input, str) else request.input
+    try:
+        embeddings, token_counts = create_embeddings(session, request.model, texts)
+    except EmbeddingAdapterError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Embedding inference failed: {exc}") from exc
+
+    if request.dimensions is not None and request.dimensions != embeddings.shape[1]:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Model '{request.model}' produces {embeddings.shape[1]} dimensions; "
+                "dimension reduction is not supported"
+            ),
+        )
+
+    return {
+        "object": "list",
+        "data": [
+            {
+                "object": "embedding",
+                "embedding": embedding.tolist(),
+                "index": index,
+            }
+            for index, embedding in enumerate(embeddings)
+        ],
+        "model": request.model,
+        "usage": {
+            "prompt_tokens": sum(token_counts),
+            "total_tokens": sum(token_counts),
+        },
+    }
+
+
+@router.post("/rerank")
+def create_rerank(request: RerankRequest):
+    session = _loaded_model_or_404(request.model)
+    try:
+        scores = rerank(session, request.model, request.query, request.documents)
+    except SequenceAdapterError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Reranking inference failed: {exc}") from exc
+    return {"model": request.model, "scores": scores}
+
+
+@router.post("/nli")
+def create_nli(request: NliRequest):
+    session = _loaded_model_or_404(request.model)
+    try:
+        scores = nli(session, request.model, [(item.premise, item.hypothesis) for item in request.pairs])
+    except SequenceAdapterError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"NLI inference failed: {exc}") from exc
+    return {"model": request.model, "scores": scores}
+
+
+@router.post("/classify")
+def create_classification(request: ClassificationRequest):
+    session = _loaded_model_or_404(request.model)
+    texts = [request.input] if isinstance(request.input, str) else request.input
+    try:
+        scores = classify(session, request.model, texts, request.labels)
+    except SequenceAdapterError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Classification inference failed: {exc}") from exc
+    return {"model": request.model, "scores": scores}

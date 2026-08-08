@@ -172,6 +172,10 @@ This runtime also exposes a small OpenAI-compatible surface under `/v1`, so tool
 - `GET /v1/models/{id}` - Inspect one model
 - `POST /v1/chat/completions` - OpenAI-style chat completion envelope
 - `POST /v1/completions` - OpenAI-style text completion envelope
+- `POST /v1/embeddings` - OpenAI-style normalized text embeddings for configured embedding models
+- `POST /v1/rerank` - score query/document pairs with a configured reranker
+- `POST /v1/nli` - return contradiction, entailment, and neutral scores for text pairs
+- `POST /v1/classify` - zero-shot label scoring through a configured NLI model
 
 For Odysseus, use:
 
@@ -192,6 +196,39 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/v1/chat/completions `
 ```
 
 For detailed request/response examples, see `docs/overview.md`.
+
+### MiniLM embeddings
+
+Install the pinned Apache-2.0 `sentence-transformers/all-MiniLM-L6-v2` ONNX model:
+
+```powershell
+pwsh -File scripts/Install-MiniLM.ps1
+```
+
+Load it through the UI or API, then request embeddings:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/models/load `
+  -ContentType "application/json" `
+  -Body '{"id":"all-MiniLM-L6-v2"}'
+
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/v1/embeddings `
+  -ContentType "application/json" `
+  -Body '{"model":"all-MiniLM-L6-v2","input":["First sentence","Second sentence"]}'
+```
+
+The adapter tokenizes to at most 256 tokens, performs attention-mask-aware mean pooling, and L2-normalizes the resulting 384-dimensional vectors. The model runs on CPU by default because it is small and avoids unnecessary DirectML transfer overhead.
+
+### Cognitive sequence models
+
+Install the pinned Apache-2.0 quantized AVX2 models explicitly:
+
+```powershell
+pwsh -File scripts/Install-Reranker.ps1
+pwsh -File scripts/Install-Nli.ps1
+```
+
+The installers pin upstream revisions and verify the ONNX SHA-256 before replacing the destination. They do not run during server startup. Sequence-classification adapters tokenize text pairs and run on CPU; reranking returns one bounded score per document, while NLI provides the fixed `contradiction`, `entailment`, and `neutral` label mapping used by zero-shot classification.
 
 ### Optional audio module (Phase 2 in progress)
 
@@ -248,6 +285,10 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 - Backend dependencies are in `requirements.txt`.
 - Frontend scripts live in `runtime-ui/package.json`.
 - A Visual Studio solution file is not required for normal backend/UI development.
+
+### Dependency audit status
+
+As of 2026-08-08, `npm audit` reports one low-severity transitive `cookie <0.7.0` advisory through the latest available `@sveltejs/kit` (`2.70.2`). npm expands this to three low-severity dependency entries and suggests invalid major downgrades to historical SvelteKit and adapter versions. No forced or breaking audit fix has been applied; recheck when SvelteKit publishes a release using a patched `cookie` dependency.
 
 ---
 

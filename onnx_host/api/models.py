@@ -128,7 +128,8 @@ async def load_model_ui(req: UILoadRequest):
     model_path = (MODELS_DIR / model["path"]).resolve()
     _verify_external_data(model_path)
 
-    providers = ["CPUExecutionProvider"] if model_kind(model_id) == "tts" else ["DmlExecutionProvider"]
+    kind = model_kind(model_id)
+    providers = ["CPUExecutionProvider"] if kind in {"tts", "embedding", "sequence-classification"} else ["DmlExecutionProvider"]
 
     engine_req = ModelLoadRequest(
         name=model["id"],

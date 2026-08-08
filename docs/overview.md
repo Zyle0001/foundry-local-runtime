@@ -37,6 +37,12 @@ This exists because I need it. If you also need it, great. If not, fork it.
 - `POST /models/{id}/active` — set active voice/config (in‑memory only).
 - `POST /models/{id}/smoke` — run a single minimal forward pass.
 - `POST /predict/{model_name}` — run inference on a loaded model.
+- `POST /v1/embeddings` — tokenize text and return normalized embeddings for a model with `adapter.json`.
+- `POST /v1/rerank` — score query/document pairs with a reranker adapter.
+- `POST /v1/nli` — return contradiction, entailment and neutral scores for text pairs.
+- `POST /v1/classify` — score caller-supplied labels through a configured NLI model.
+
+The last three are Tiny Minds provider extensions, not claims of OpenAI API compatibility. They never download models and reject adapters whose declared task does not match the requested operation.
 - `GET /status` — VRAM usage and GPU info.
 
 ## Endpoint Usage
